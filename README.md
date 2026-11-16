@@ -44,7 +44,8 @@ split that holds out whole drivers.
 └── checkpoints/       NOT in git: saved models live in the shared Drive
 ```
 
-This is the starting scaffold. Each file above is added by its owner.
+What exists so far: `notebooks/00_eda.ipynb` and its charts in `figures/`. The Python files
+above are added by their owners.
 
 ## Getting the data
 
@@ -95,3 +96,10 @@ pip install -r requirements.txt
 - **Seed:** 42 for every run. Batch size 32 unless the GPU runs out of memory.
 - **Storage:** code in this repo; datasets and checkpoints in the shared Drive folder.
 - **Colab:** save checkpoints to Drive every epoch so a disconnect does not lose the run.
+
+## Dataset facts (from `notebooks/00_eda.ipynb`)
+
+- 22,424 images, 10 classes, 26 drivers, all 640×480 RGB.
+- Classes are roughly balanced: 1,911 to 2,489 images each.
+- Drivers are uneven: 346 to 1,237 images each.
+- Every driver has every class, but driver `p072` has only 2 images of `c7` and 6 of `c5`.
