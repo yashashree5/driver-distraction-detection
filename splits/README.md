@@ -8,4 +8,41 @@ Do not edit them by hand, and do not make your own split.
 | `driverwise.csv` | Whole drivers held out: no driver appears in more than one of train / val / test. This is the split for every number in the results table. |
 | `random.csv` | Images shuffled and stratified by class, ignoring who the driver is. Used only in Experiment 3 to show how much a random split inflates accuracy. |
 
-Status: not generated yet.
+## Columns
+
+Both files list all 22,424 labeled images once.
+
+| Column | Example | Meaning |
+|---|---|---|
+| `path` | `imgs/train/c0/img_100026.jpg` | image path inside the `data/` folder |
+| `classname` | `c0` | class folder name |
+| `label` | `0` | class as a number from 0 to 9 |
+| `subject` | `p015` | driver ID |
+| `split` | `train` | `train`, `val` or `test` |
+
+## Sizes
+
+Both files have the same sizes, so Experiment 3 compares like with like.
+
+| Split | Images | Share | Drivers in `driverwise.csv` |
+|---|---|---|---|
+| train | 15,568 | 69.4% | 18 |
+| val | 3,414 | 15.2% | 4: p021, p035, p041, p045 |
+| test | 3,442 | 15.3% | 4: p024, p042, p047, p050 |
+
+In `random.csv` all 26 drivers appear in all three splits.
+
+## How the drivers were chosen
+
+Drivers have very different numbers of images (346 to 1,237), so picking 4 drivers at random
+can give a test set that is too small or short of one class. `make_splits.py` tries 2,000
+random choices and keeps the one where val and test are closest to their fair share of the
+images and to the class mix of the whole dataset. Model accuracy is never used.
+
+Driver `p072` always stays in training because it has only 2 images of `c7` and 6 of `c5`.
+
+To rebuild the files:
+
+```bash
+python make_splits.py
+```
