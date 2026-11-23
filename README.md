@@ -44,8 +44,8 @@ split that holds out whole drivers.
 └── checkpoints/       NOT in git: saved models live in the shared Drive
 ```
 
-What exists so far: `notebooks/00_eda.ipynb` and its charts in `figures/`. The Python files
-above are added by their owners.
+What exists so far: the EDA notebook with its charts in `figures/`, the two split files,
+`make_splits.py` and `data.py`. The other Python files are added by their owners.
 
 ## Getting the data
 
@@ -84,6 +84,36 @@ Unzipping onto the Colab disk is much faster than reading 22,424 small files fro
 
 ```bash
 pip install -r requirements.txt
+```
+
+## Loading the data in your code
+
+`data.py` gives you the train, val and test loaders for a split file. It already does the
+resize to 224×224, the ImageNet normalisation and the augmentation, so do not add your own.
+
+```python
+from data import make_loaders
+
+loaders = make_loaders("splits/driverwise.csv", data_dir="data")
+for images, labels in loaders["train"]:
+    ...  # images: (32, 3, 224, 224), labels: (32,)
+```
+
+For Experiment 3, pass `"splits/random.csv"` instead. The split files are explained in
+[splits/README.md](splits/README.md).
+
+Two things to know:
+
+- Call `torch.manual_seed(42)` at the start of training, so the augmentation is the same in
+  every run.
+- On a Mac, a plain script that uses the loader hangs unless the code is under
+  `if __name__ == "__main__":`. Notebooks and Colab are fine. You can also pass
+  `num_workers=0`.
+
+To run the tests:
+
+```bash
+pytest
 ```
 
 ## Shared rules, so the numbers compare
