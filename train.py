@@ -21,7 +21,7 @@ from torch import nn
 
 from data import SEED, make_loaders
 from eval import evaluate, summarize
-from models import build_model, count_parameters
+from models import build_model, count_parameters, model_size_mb
 
 
 def set_seed(seed: int = SEED) -> None:
@@ -52,8 +52,12 @@ def fit(
     """
     device = device or get_device()
     model.to(device)
-    params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.AdamW(params, lr=lr, weight_decay=weight_decay)
+    if hasattr(model, "parameter_groups"):
+        param_groups = model.parameter_groups(lr, weight_decay)
+    else:
+        param_groups = [{"params": [p for p in model.parameters() if p.requires_grad],
+                         "lr": lr, "weight_decay": weight_decay}]
+    optimizer = torch.optim.AdamW(param_groups)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     criterion = nn.CrossEntropyLoss()
 
@@ -107,24 +111,43 @@ def main() -> None:
     parser.add_argument("--data-dir", default="data")
     parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--backbone-lr", type=float, default=None,
+                        help="Fine-tuning backbone learning rate; defaults to 10%% of --lr")
+    parser.add_argument("--frozen", action=argparse.BooleanOptionalAction, default=True,
+                        help="Freeze the pretrained backbone and train only the 10-class head")
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--patience", type=int, default=5)
+    parser.add_argument("--output-dir", default=".",
+                        help="Directory for checkpoints/ and results/ (use Google Drive on Colab)")
     args = parser.parse_args()
 
     set_seed()
     device = get_device()
-    tag = f"{args.model}_{Path(args.split).stem}"
+    transfer_models = {"resnet18", "mobilenet_v2", "mobilenet"}
+    if args.model in transfer_models:
+        mode = "frozen" if args.frozen else "fine_tuned"
+        model = build_model(args.model, pretrained=True, frozen=args.frozen)
+        if args.backbone_lr is not None:
+            model.backbone_lr_multiplier = args.backbone_lr / args.lr
+        tag = f"{args.model}_{mode}_{Path(args.split).stem}"
+    else:
+        model = build_model(args.model)
+        tag = f"{args.model}_{Path(args.split).stem}"
     loaders = make_loaders(args.split, args.data_dir, args.batch_size, args.workers)
-    model = build_model(args.model)
-    print(f"{tag}: {count_parameters(model):,} trainable parameters on {device}")
+    print(f"{tag}: {count_parameters(model):,} trainable parameters, "
+          f"{model_size_mb(model):.2f} MB on {device}")
 
+    output_dir = Path(args.output_dir)
     history = fit(model, loaders, args.epochs, args.lr, device=device,
-                  ckpt_path=f"checkpoints/{tag}.pt", patience=args.patience)
+                  ckpt_path=output_dir / "checkpoints" / f"{tag}.pt", patience=args.patience)
     test = summarize(evaluate(model, loaders["test"], device))
     print("test:", test)
-    Path("results").mkdir(exist_ok=True)
-    Path(f"results/{tag}.json").write_text(json.dumps({"args": vars(args), "history": history, "test": test}, indent=2))
+    results_dir = output_dir / "results"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    (results_dir / f"{tag}.json").write_text(
+        json.dumps({"args": vars(args), "history": history, "test": test}, indent=2)
+    )
 
 
 if __name__ == "__main__":

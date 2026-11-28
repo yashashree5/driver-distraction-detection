@@ -75,10 +75,12 @@ drive.mount("/content/drive")
 
 !git clone https://github.com/yashashree5/driver-distraction-detection.git
 %cd driver-distraction-detection
+!pip install -r requirements.txt
 !unzip -q "/content/drive/MyDrive/DL Final Project/data/statefarm_train.zip" -d data
 ```
 
 Unzipping onto the Colab disk is much faster than reading 22,424 small files from Drive.
+In Colab, select **Runtime → Change runtime type → T4 GPU** (if available) before training.
 
 ## Setup
 
@@ -101,6 +103,20 @@ for images, labels in loaders["train"]:
 
 For Experiment 3, pass `"splits/random.csv"` instead. The split files are explained in
 [splits/README.md](splits/README.md).
+
+### Transfer-learning runs
+
+```bash
+python train.py --model resnet18 --split splits/driverwise.csv --output-dir "/content/drive/MyDrive/DL Final Project"
+python train.py --model resnet18 --split splits/driverwise.csv --no-frozen --output-dir "/content/drive/MyDrive/DL Final Project"
+python train.py --model mobilenet_v2 --split splits/driverwise.csv --output-dir "/content/drive/MyDrive/DL Final Project"
+python train.py --model mobilenet_v2 --split splits/driverwise.csv --no-frozen --output-dir "/content/drive/MyDrive/DL Final Project"
+```
+
+The default is the frozen-backbone run. `--no-frozen` enables fine-tuning and applies a
+backbone learning rate that is 10% of the head learning rate. Use `--output-dir` on every
+run to store checkpoints and results in persistent Google Drive storage; its default is the
+repository directory.
 
 Two things to know:
 
@@ -125,7 +141,7 @@ pytest
 - **No horizontal flip.** It turns "texting (right)" into "texting (left)" and breaks the labels.
 - **Seed:** 42 for every run. Batch size 32 unless the GPU runs out of memory.
 - **Storage:** code in this repo; datasets and checkpoints in the shared Drive folder.
-- **Colab:** save checkpoints to Drive every epoch so a disconnect does not lose the run.
+- **Colab:** save checkpoints and results to Drive so they persist beyond the runtime session.
 
 ## Dataset facts (from `notebooks/00_eda.ipynb`)
 
